@@ -1,0 +1,27 @@
+library(nlstools)
+library(investr)
+library(ggplot2)
+library(caret)
+Growth <- read.csv("C:/Users/elang/Desktop/Growth_Ex.csv")
+Growth <- Growth[order(Growth$Time_years),]
+Growth <- Growth[!is.na(Growth$Measure),]
+
+
+Growth_vb <- nls(Measure ~ linf+(L1-linf)*(exp(-k*(Time_years))), 
+                 data=Growth, start=list(L1=1,linf=40,k=0.3), trace=TRUE)
+fit <- Growth_vb$m$fitted()
+predict_growth <- function(vb) {
+  predict(Growth_vb, newdata = data.frame(Exp_Measure = vb))
+}
+train_type <- trainControl(method = 'LOOCV')
+train_model <- train(Measure ~ predict_growth(Time_years), data=Growth,
+                     method = 'lm', trControl = train_type)
+mean_measure <- (train_model$pred$pred+train_model$pred$obs)/2
+Percent_Error <- abs(mean_measure-train_model$pred$pred)/mean_measure
+Mean_Proportion_Error <- mean(Measure_Error)
+
+ggplot()+
+  geom_point(data=Growth,aes(x=Growth$Time_years, y=Growth$Measure), shape=21)+
+  geom_line(aes(x=Growth$Time_years, y=fit), color='blue', linewidth=2)+
+  labs(x="Time (years)", y="Measure")+
+  theme_bw()
